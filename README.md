@@ -475,7 +475,17 @@ Manually instead: New → Web Service, per backend —
 | Start command | `npm start` | `npm start` |
 | Health check | `/api/health` | `/api/health` |
 
-Then seed each once, from the Render shell: `npm run seed`.
+Then seed each database once. Render's Shell tab needs a paid instance type, so
+on the free tier run the seed locally against the Atlas connection string
+instead — the seed script only ever talks to the database, so where it runs from
+makes no difference:
+
+```bash
+cd task-01/backend && MONGODB_URI="<the techloom_pos URI>" npm run seed
+cd task-02/backend && MONGODB_URI="<the techloom_shop URI>" npm run seed
+```
+
+This doubles as a check that the Atlas URI works before Render is involved.
 
 > Render's free tier sleeps after inactivity, so the first request after a quiet
 > spell takes ~30 seconds to wake. Worth knowing before judging the demo's speed.
