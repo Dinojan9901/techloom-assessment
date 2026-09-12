@@ -1,0 +1,75 @@
+# Render Blueprint — deploys both backends in one go.
+#
+# Usage: Render Dashboard -> New -> Blueprint -> point at this repository.
+# Render reads this file and creates both services. The only thing it cannot
+# guess is MONGODB_URI, which is marked `sync: false` and prompted for at
+# deploy time (use a MongoDB Atlas connection string; the free M0 tier is a
+# replica set, which is what the transactional paths need).
+#
+# After the frontends are deployed on Vercel, set CORS_ORIGINS on each service
+# to the matching frontend URL.
+
+services:
+  - type: web
+    name: techloom-pos-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: task-01/backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # set in the Render dashboard
+      - key: CORS_ORIGINS
+        sync: false # the task-01 Vercel URL
+      - key: RESERVATION_TTL_MINUTES
+        value: '5'
+      - key: SWEEPER_INTERVAL_MS
+        value: '15000'
+      - key: PAYMENT_TIMEOUT_MS
+        value: '1500'
+      - key: PAYMENT_WEIGHT_SUCCESS
+        value: '70'
+      - key: PAYMENT_WEIGHT_FAILURE
+        value: '20'
+      - key: PAYMENT_WEIGHT_TIMEOUT
+        value: '10'
+
+  - type: web
+    name: techloom-shop-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: task-02/backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # set in the Render dashboard
+      - key: CORS_ORIGINS
+        sync: false # the task-02 Vercel URL
+      - key: RESERVATION_TTL_MINUTES
+        value: '5'
+      - key: SWEEPER_INTERVAL_MS
+        value: '15000'
+      - key: PAYMENT_TIMEOUT_MS
+        value: '1500'
+      - key: PAYMENT_WEIGHT_SUCCESS
+        value: '70'
+      - key: PAYMENT_WEIGHT_FAILURE
+        value: '20'
+      - key: PAYMENT_WEIGHT_TIMEOUT
+        value: '10'

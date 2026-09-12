@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# environment — never commit real connection strings
+.env
+.env.local
+.env.*.local
+
+# build output
+.next/
+out/
+dist/
+
+# logs & coverage
+*.log
+npm-debug.log*
+coverage/
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# the assessment brief itself — no need to republish it
+Techloom_Intern_Assessment*.docx
