@@ -4,7 +4,7 @@ Concurrency-safe point-of-sale: product CRUD, a till, five-minute stock
 reservations, a mock card gateway, and an order lifecycle where cancelling
 always puts inventory back exactly right.
 
-**Live app:** `<TASK-01-VERCEL-URL>` · **API:** `<TASK-01-RENDER-URL>`
+**Live app:** `<TASK-01-APP-URL>` · **API:** `<TASK-01-API-URL>`
 
 Full architecture notes, the concurrency proof and the API reference live in the
 [root README](../README.md). This file is the short operational version.

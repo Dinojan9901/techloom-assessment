@@ -10,10 +10,17 @@ import ordersRouter from './routes/orders.routes.js';
 import productsRouter from './routes/products.routes.js';
 import {
   sweepExpiredReservations,
+  sweepOnRequest,
   sweepStaleOrders,
 } from './services/reservation.service.js';
 
-export function createApp() {
+/**
+ * @param {object} [options]
+ * @param {boolean} [options.sweepOnRequest] Run reservation expiry on incoming
+ *   requests instead of on a timer. Required on serverless hosts, where the
+ *   background interval never fires. Defaults on when Vercel is detected.
+ */
+export function createApp({ sweepOnRequest: sweepPerRequest = Boolean(process.env.VERCEL) } = {}) {
   const app = express();
 
   app.set('trust proxy', 1);
@@ -26,6 +33,7 @@ export function createApp() {
   );
   app.use(express.json({ limit: '256kb' }));
   if (!isTest) app.use(morgan('tiny'));
+  if (sweepPerRequest) app.use(sweepOnRequest());
 
   app.get('/', (req, res) =>
     res.json({

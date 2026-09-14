@@ -5,8 +5,8 @@ Two connected systems built around one problem: **selling a limited thing to sev
 | | |
 |---|---|
 | **Repository** | `https://github.com/<your-username>/techloom-assessment` |
-| **Task 01 — POS Order & Inventory** | live app: `<TASK-01-VERCEL-URL>` · API: `<TASK-01-RENDER-URL>` |
-| **Task 02 — Storefront Checkout & Payment** | live app: `<TASK-02-VERCEL-URL>` · API: `<TASK-02-RENDER-URL>` |
+| **Task 01 — POS Order & Inventory** | live app: `<TASK-01-APP-URL>` · API: `<TASK-01-API-URL>` |
+| **Task 02 — Storefront Checkout & Payment** | live app: `<TASK-02-APP-URL>` · API: `<TASK-02-API-URL>` |
 | **Walkthrough video** | `<OPTIONAL-LOOM-URL>` |
 
 > Replace the four placeholders above with the real URLs once deployed — see
@@ -59,7 +59,7 @@ independently so neither can break the other.
 | Frontend | Next.js 16 (App Router) + React 19 | Server-rendered shell, client components where state is live |
 | Validation | Zod | One schema per endpoint, typed errors out of the box |
 | Tests | Jest + Supertest + `mongodb-memory-server` | Real HTTP against a real replica set, no mocks of the database |
-| Hosting | Render (APIs) + Vercel (frontends) + MongoDB Atlas | All free tier |
+| Hosting | Vercel (both APIs and both frontends) + MongoDB Atlas | All free tier, no card required |
 
 No UI framework or component library — the styling is a small hand-written
 design system in one stylesheet per app, so there is nothing to audit but CSS.
@@ -128,9 +128,14 @@ Three independent mechanisms make sure stock never stays stuck:
 
 | Mechanism | What it covers |
 |---|---|
-| **Background sweeper** (every 15s) | The normal case — an abandoned checkout |
+| **Background sweeper** (every 15s) | The normal case on an always-on host — an abandoned checkout |
+| **Request-triggered sweep** (throttled to 5s) | The same job on serverless, where a frozen function's timer never fires |
 | **Read-through check** | A stale order can never be paid, even between sweeps |
 | **Stale-order sweep** | A crash between writes that left an order holding stock with no live reservation |
+
+All four are safe to run at once, and that is the point: releasing a reservation
+*claims* it first, so however many sweepers race, the stock comes back exactly
+once.
 
 A reservation is released by **claiming it first**:
 
@@ -461,51 +466,46 @@ mongodb+srv://user:pass@cluster.mongodb.net/techloom_pos?retryWrites=true&w=majo
 mongodb+srv://user:pass@cluster.mongodb.net/techloom_shop?retryWrites=true&w=majority
 ```
 
-### 2. Backends — Render
+### 2. Everything else — Vercel (four projects)
 
-Easiest path: **New → Blueprint**, point it at this repository. `render.yaml`
-creates both services; Render prompts for `MONGODB_URI` on each.
+Both backends and both frontends deploy to Vercel from this one repository, as
+four projects that differ only by root directory. Import the repo four times via
+**Add New → Project**, and set **Root Directory** each time.
 
-Manually instead: New → Web Service, per backend —
+| # | Project | Root directory | Framework | Environment variables |
+|---|---|---|---|---|
+| 1 | `techloom-pos-api` | `task-01/backend` | Other | `MONGODB_URI` (the `techloom_pos` URI), `CORS_ORIGINS` |
+| 2 | `techloom-shop-api` | `task-02/backend` | Other | `MONGODB_URI` (the `techloom_shop` URI), `CORS_ORIGINS` |
+| 3 | `techloom-pos` | `task-01/frontend` | Next.js | `NEXT_PUBLIC_API_URL` → project 1's URL |
+| 4 | `techloom-shop` | `task-02/frontend` | Next.js | `NEXT_PUBLIC_API_URL` → project 2's URL |
 
-| Setting | task-01 | task-02 |
-|---|---|---|
-| Root directory | `task-01/backend` | `task-02/backend` |
-| Build command | `npm ci` | `npm ci` |
-| Start command | `npm start` | `npm start` |
-| Health check | `/api/health` | `/api/health` |
+Deploy the two APIs first: `NEXT_PUBLIC_API_URL` is compiled into the frontend
+bundle at build time, so the frontends need those URLs to already exist. Set
+`CORS_ORIGINS` to `*` initially and tighten it to the matching frontend URL once
+projects 3 and 4 are live.
 
-Then seed each database once. Render's Shell tab needs a paid instance type, so
-on the free tier run the seed locally against the Atlas connection string
-instead — the seed script only ever talks to the database, so where it runs from
-makes no difference:
+Each backend carries a [`vercel.json`](task-01/backend/vercel.json) that routes
+every path to `api/index.js`, and an [`api/index.js`](task-01/backend/api/index.js)
+that wraps the same Express app used locally.
 
-```bash
-cd task-01/backend && MONGODB_URI="<the techloom_pos URI>" npm run seed
-cd task-02/backend && MONGODB_URI="<the techloom_shop URI>" npm run seed
+Verify each API before moving on:
+
+```
+https://techloom-pos-api.vercel.app/api/health   ->  {"status":"ok", ...}
 ```
 
-This doubles as a check that the Atlas URI works before Render is involved.
+### Running on an always-on host instead
 
-> Render's free tier sleeps after inactivity, so the first request after a quiet
-> spell takes ~30 seconds to wake. Worth knowing before judging the demo's speed.
+[`render.yaml`](render.yaml) is a Render Blueprint that deploys both backends as
+long-lived Node services. Nothing in the code needs changing — `src/server.js`
+is still a normal Express server with a real background sweeper, and it is what
+runs there. Note that Render requires a card on file to use Blueprints, even for
+free instances.
 
-### 3. Frontends — Vercel
+### 3. Close the loop
 
-Import the repository twice:
-
-| Setting | task-01 | task-02 |
-|---|---|---|
-| Root directory | `task-01/frontend` | `task-02/frontend` |
-| Framework | Next.js (auto) | Next.js (auto) |
-| `NEXT_PUBLIC_API_URL` | the task-01 Render URL | the task-02 Render URL |
-
-### 4. Close the loop
-
-Set `CORS_ORIGINS` on each Render service to its Vercel URL, then paste all four
-URLs into the table at the top of this file.
-
----
+Set `CORS_ORIGINS` on each API project to its frontend URL, redeploy, then paste
+all four URLs into the table at the top of this file.
 
 ## Decisions and trade-offs
 
@@ -529,6 +529,16 @@ monorepo answer — but deployment is a hard requirement here, and workspace
 linking is the most common way Vercel and Render deploys fail. Two independent
 services also mean one task cannot break the other.
 
+**Serverless changes how expiry runs, not whether it is correct.** Deployed to
+Vercel, there is no always-on process, so the 15-second interval sweeper never
+fires — expiry instead rides on incoming requests, throttled so at most one
+request every five seconds pays for it. The frontends poll every five or six
+seconds anyway, so in practice a lapsed reservation is released within seconds of
+its window closing. Correctness never depended on the sweeper's timing: the
+read-through check means an expired hold can never be paid against, whenever the
+sweep happens to run. `src/server.js` still runs the real interval sweeper on any
+always-on host, unchanged.
+
 **Sessions instead of auth.** Neither brief asks for accounts, so a browser-
 generated `X-Session-Id` scopes carts and order history. Real auth would slot in
 at the same boundary without touching the reservation engine.
@@ -539,10 +549,11 @@ held.
 
 ### What I would do next, with more time
 
-- **Move the sweeper out of the web process.** It is an interval in each API
-  instance today, which is fine for one instance and merely wasteful for several
-  (the claim-before-release pattern makes it safe either way). A single worker or
-  a Mongo change stream would be tidier.
+- **Give expiry a dedicated trigger.** Today it is an interval on an always-on
+  host and request-triggered on serverless; both work, neither is ideal. A real
+  scheduler (a Mongo change stream, or a cron hitting `/api/admin/sweep` on a
+  short interval) would decouple it from traffic entirely — Vercel's free tier
+  only allows a daily cron, which is why it is not that today.
 - **A webhook path for the gateway.** Real gateways answer asynchronously; a
   timeout here ends the order, where production would reconcile later.
 - **Rate limiting and auth** on the write endpoints, which are currently open.

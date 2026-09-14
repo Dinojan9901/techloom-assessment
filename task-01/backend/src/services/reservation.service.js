@@ -155,6 +155,45 @@ export async function sweepStaleOrders({ now = new Date() } = {}) {
   return closed;
 }
 
+let lastRequestSweepAt = 0;
+let requestSweepInFlight = false;
+
+/**
+ * Express middleware that runs the expiry sweep on the back of ordinary traffic.
+ *
+ * A serverless platform freezes a function between invocations, so the interval
+ * timer in `startReservationSweeper` never fires there. Piggy-backing on real
+ * requests keeps expiry prompt without an always-on worker — and because
+ * releasing claims a reservation first, it stays correct no matter how many
+ * instances sweep at once.
+ *
+ * The sweep is awaited rather than fired and forgotten: on a frozen runtime,
+ * work started after the response is sent may simply never finish. Throttling
+ * means only one request every `minIntervalMs` pays for it.
+ */
+export function sweepOnRequest({ minIntervalMs = 5_000 } = {}) {
+  return async function sweepIfDue(req, res, next) {
+    const now = Date.now();
+    if (requestSweepInFlight || now - lastRequestSweepAt < minIntervalMs) {
+      return next();
+    }
+
+    lastRequestSweepAt = now;
+    requestSweepInFlight = true;
+    try {
+      await sweepExpiredReservations();
+      await sweepStaleOrders();
+    } catch (error) {
+      // Never fail a user's request because housekeeping had a bad moment.
+      console.error('[sweeper] request-triggered sweep failed', error);
+    } finally {
+      requestSweepInFlight = false;
+    }
+
+    return next();
+  };
+}
+
 let timer = null;
 
 export function startReservationSweeper({ intervalMs = env.sweeperIntervalMs } = {}) {
