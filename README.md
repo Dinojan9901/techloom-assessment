@@ -4,13 +4,14 @@ Two connected systems built around one problem: **selling a limited thing to sev
 
 | | |
 |---|---|
-| **Repository** | `https://github.com/<your-username>/techloom-assessment` |
-| **Task 01 — POS Order & Inventory** | live app: `<TASK-01-APP-URL>` · API: `<TASK-01-API-URL>` |
-| **Task 02 — Storefront Checkout & Payment** | live app: `<TASK-02-APP-URL>` · API: `<TASK-02-API-URL>` |
+| **Repository** | <https://github.com/Dinojan9901/techloom-assessment> |
+| **Task 01 — POS Order & Inventory** | live app: <https://techloom-pos-iota.vercel.app> · API: <https://techloom-pos-api.vercel.app/api/health> |
+| **Task 02 — Storefront Checkout & Payment** | live app: <https://techloom-shop.vercel.app> · API: <https://techloom-shop-api.vercel.app/api/health> |
 | **Walkthrough video** | `<OPTIONAL-LOOM-URL>` |
 
-> Replace the four placeholders above with the real URLs once deployed — see
-> [Deployment](#deployment). Every other part of this README is ready as-is.
+> Both APIs run on Vercel as serverless functions; both frontends are Next.js on
+> Vercel; the database is MongoDB Atlas. Everything is on a free tier, so the
+> very first request after a quiet spell may take a few seconds to warm up.
 
 ---
 
@@ -491,7 +492,8 @@ that wraps the same Express app used locally.
 Verify each API before moving on:
 
 ```
-https://techloom-pos-api.vercel.app/api/health   ->  {"status":"ok", ...}
+https://techloom-pos-api.vercel.app/api/health    ->  {"status":"ok", ...}
+https://techloom-shop-api.vercel.app/api/health   ->  {"status":"ok", ...}
 ```
 
 ### Running on an always-on host instead

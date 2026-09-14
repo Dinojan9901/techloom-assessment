@@ -4,7 +4,7 @@ A storefront end to end: search and filtering, product pages, a cart, a checkout
 that reserves stock before it charges, a mock gateway with declines and timeouts,
 refunds, and order history.
 
-**Live app:** `<TASK-02-APP-URL>` · **API:** `<TASK-02-API-URL>`
+**Live app:** <https://techloom-shop.vercel.app> · **API:** <https://techloom-shop-api.vercel.app/api/health>
 
 Full architecture notes, the concurrency proof and the API reference live in the
 [root README](../README.md). This file is the short operational version.
